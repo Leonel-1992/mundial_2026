@@ -434,9 +434,15 @@
 
             if (!diasOrdenados[objPartido.fecha]) diasOrdenados[objPartido.fecha] = [];
             diasOrdenados[objPartido.fecha].push(objPartido);
-            
-            if (partidosPorChango[objPartido.d1]) partidosPorChango[objPartido.d1].push(objPartido);
-            if (partidosPorChango[objPartido.d2]) partidosPorChango[objPartido.d2].push(objPartido);
+
+            // Agrega el partido al Dueño 1
+            if (partidosPorChango[objPartido.d1]) {
+                partidosPorChango[objPartido.d1].push(objPartido);
+            }
+            // Agrega el partido al Dueño 2 SOLO si no es la misma persona que el Dueño 1
+            if (partidosPorChango[objPartido.d2] && objPartido.d1 !== objPartido.d2) {
+                partidosPorChango[objPartido.d2].push(objPartido);
+            }
 
             // Procesar estadísticas de puntos si está finalizado
             if (res.status === 'FINISHED' && res.g1 !== undefined) {

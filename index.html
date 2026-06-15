@@ -297,8 +297,10 @@
         const revKey = `${t2}-${t1}`;
         if (resultadosEnVivo[revKey]) {
             const rev = resultadosEnVivo[revKey];
-            if (rev.g1 !== undefined && rev.g2 !== undefined)
-                return { ...rev, g1: rev.g2, g2: rev.g1, status: rev.status, minute: rev.minute, isLive: rev.isLive };
+            if (rev.g1 !== undefined && rev.g2 !== undefined) {
+                // Devolvemos una copia limpia con los goles volteados correspondientemente
+                return { status: rev.status, minute: rev.minute, isLive: rev.isLive, g1: rev.g2, g2: rev.g1 };
+            }
             return rev;
         }
         return null;
@@ -414,9 +416,10 @@
 
         // LEER PARTIDOS DIRECTAMENTE DESDE LA ENTRADA EN VIVO DE LA FIFA
         // Esto rompe la dependencia de la lista manual estática
+        // LEER PARTIDOS DIRECTAMENTE DESDE LA ENTRADA EN VIVO DE LA FIFA
         Object.keys(resultadosEnVivo).forEach(key => {
             let [t1, t2] = key.split('-');
-            if (!equiposDatos[t1] || !equiposDatos[t2]) return; // Ignorar si son nombres no mapeados
+            if (!equiposDatos[t1] || !equiposDatos[t2]) return; 
 
             let res = resultadosEnVivo[key];
             let fechaReal = getHorario(t1, t2) || new Date();
@@ -434,15 +437,9 @@
 
             if (!diasOrdenados[objPartido.fecha]) diasOrdenados[objPartido.fecha] = [];
             diasOrdenados[objPartido.fecha].push(objPartido);
-
-            // Agrega el partido al Dueño 1
-            if (partidosPorChango[objPartido.d1]) {
-                partidosPorChango[objPartido.d1].push(objPartido);
-            }
-            // Agrega el partido al Dueño 2 SOLO si no es la misma persona que el Dueño 1
-            if (partidosPorChango[objPartido.d2] && objPartido.d1 !== objPartido.d2) {
-                partidosPorChango[objPartido.d2].push(objPartido);
-            }
+            
+            if (partidosPorChango[objPartido.d1]) partidosPorChango[objPartido.d1].push(objPartido);
+            if (partidosPorChango[objPartido.d2]) partidosPorChango[objPartido.d2].push(objPartido);
 
             // Procesar estadísticas de puntos si está finalizado
             if (res.status === 'FINISHED' && res.g1 !== undefined) {
@@ -456,7 +453,6 @@
                 else if (g1 < g2) { estadisticasChangos[c2].pg++; estadisticasChangos[c2].pts += 3; estadisticasChangos[c1].pp++; }
                 else { estadisticasChangos[c1].pe++; estadisticasChangos[c1].pts += 1; estadisticasChangos[c2].pe++; estadisticasChangos[c2].pts += 1; }
 
-                // Actualizar tablas de grupos (solo aplica si el partido pertenece a la fase de grupos original)
                 let eq1 = gruposStats[equiposDatos[t1].g]?.find(e => e.equipo === t1);
                 let eq2 = gruposStats[equiposDatos[t2].g]?.find(e => e.equipo === t2);
                 if (eq1 && eq2) {

@@ -534,6 +534,7 @@
         contenedorParticipantes.innerHTML = htmlSecciones;
 
         // Renderizar partidos individuales de cada persona (Filtrando duplicados internos)
+        // Renderizar partidos individuales de cada persona (Filtrando duplicados internos)
         Object.keys(coloresParticipantes).forEach(persona => {
             const div = document.getElementById('lista-pers-' + persona.replace(/\s+/g, ''));
             if (!div) return;

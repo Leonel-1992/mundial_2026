@@ -533,6 +533,7 @@
         });
         contenedorParticipantes.innerHTML = htmlSecciones;
 
+        // Renderizar partidos individuales de cada persona (Filtrando duplicados internos)
         Object.keys(coloresParticipantes).forEach(persona => {
             const div = document.getElementById('lista-pers-' + persona.replace(/\s+/g, ''));
             if (!div) return;
@@ -540,7 +541,15 @@
             let misPartidos = partidosPorChango[persona] || [];
             misPartidos.sort((a,b) => (a.fechaObj || new Date(0)) - (b.fechaObj || new Date(0)));
             
+            // Usamos un set para llevar el registro de qué partidos ya dibujamos en esta sección
+            let partidosDibujados = new Set();
+            
             misPartidos.forEach(pt => {
+                // Creamos un identificador único para el juego (ej: "Jordania-Argentina")
+                let partidoId = `${pt.t1}-${pt.t2}`;
+                if (partidosDibujados.has(partidoId)) return; // Si ya se dibujó para esta persona, nos lo saltamos
+                partidosDibujados.add(partidoId);
+
                 let esLocal = (pt.d1 === persona);
                 let res = getResult(pt.t1, pt.t2);
                 let estado = renderizarInsigniaEstado(res);
@@ -549,17 +558,36 @@
                     `<span style="color:#aaa; font-weight:bold;">VS</span>`;
                 let h2hHtml = obtenerHtmlHistorial(pt.t1, pt.t2);
 
+                // Lógica inteligente para las etiquetas cuando juegas contra ti mismo
+                let etiquetaIzquierda = esLocal ? "Tu equipo" : (pt.d1 === pt.d2 ? "Tu equipo (vs ti)" : `Rival: ${pt.d1}`);
+                let etiquetaDerecha = !esLocal ? "Tu equipo" : (pt.d1 === pt.d2 ? "Tu equipo (vs ti)" : `Rival: ${pt.d2}`);
+
                 html += `
                 <div class="p-mini ${pt.finalizado ? 'partido-pasado' : ''}" onclick="alternarTarjetaPartido(this)">
                     <div class="p-mini-fecha">${pt.fecha} - ${pt.hora} hrs</div>
                     <div class="p-mini-equipos">
-                        <div class="p-mini-col"><img src="https://flagcdn.com/w20/${esLocal ? pt.c1 : pt.c2}.png" style="width:28px; border-radius:3px;"><span style="font-size:0.8rem;">${esLocal ? pt.t1 : pt.t2}</span><span class="t-dueño" style="font-size:0.65rem; background-color:${coloresParticipantes[persona]}">Tu equipo</span></div>
+                        <div class="p-mini-col">
+                            <img src="https://flagcdn.com/w20/${esLocal ? pt.c1 : pt.c2}.png" style="width:28px; border-radius:3px;">
+                            <span style="font-size:0.8rem;">${esLocal ? pt.t1 : pt.t2}</span>
+                            <span class="t-dueño" style="font-size:0.65rem; background-color:${esLocal ? coloresParticipantes[pt.d1] : coloresParticipantes[pt.d2]}">${etiquetaIzquierda}</span>
+                        </div>
                         <div style="display:flex; flex-direction:column; align-items:center;">${scoreCenter}${estado}</div>
-                        <div class="p-mini-col"><img src="https://flagcdn.com/w20/${esLocal ? pt.c2 : pt.c1}.png" style="width:28px; border-radius:3px;"><span style="font-size:0.8rem;">${esLocal ? pt.t2 : pt.t1}</span><span class="t-dueño" style="font-size:0.65rem; background-color:${coloresParticipantes[esLocal ? pt.d2 : pt.d1] || '#555'}">Rival: ${esLocal ? pt.d2 : pt.d1}</span></div>
+                        <div class="p-mini-col">
+                            <img src="https://flagcdn.com/w20/${esLocal ? pt.c2 : pt.c1}.png" style="width:28px; border-radius:3px;">
+                            <span style="font-size:0.8rem;">${esLocal ? pt.t2 : pt.t1}</span>
+                            <span class="t-dueño" style="font-size:0.65rem; background-color:${!esLocal ? coloresParticipantes[pt.d1] : coloresParticipantes[pt.d2]}">${etiquetaDerecha}</span>
+                        </div>
                     </div>
                     ${h2hHtml}
                 </div>`;
             });
+            
+            // Corregimos dinámicamente el contador del encabezado para que muestre el número real de tarjetas pintadas
+            const summaryElement = div.parentElement.querySelector('summary');
+            if (summaryElement) {
+                summaryElement.innerHTML = `👤 ${persona} (${partidosDibujados.size} Partidos)`;
+            }
+            
             div.innerHTML = html;
         });
 

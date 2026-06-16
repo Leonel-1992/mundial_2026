@@ -417,16 +417,22 @@
         // LEER PARTIDOS DIRECTAMENTE DESDE LA ENTRADA EN VIVO DE LA FIFA
         // Esto rompe la dependencia de la lista manual estática
         // LEER PARTIDOS DIRECTAMENTE DESDE LA ENTRADA EN VIVO DE LA FIFA
+        // LEER PARTIDOS DIRECTAMENTE DESDE LA ENTRADA EN VIVO DE LA FIFA
         Object.keys(resultadosEnVivo).forEach(key => {
             let [t1, t2] = key.split('-');
+            
+            // VALIDACIÓN DE SEGURIDAD 1: Si alguno de los dos equipos no está en tu quiniela, ignorar.
             if (!equiposDatos[t1] || !equiposDatos[t2]) return; 
 
             let res = resultadosEnVivo[key];
             let fechaReal = getHorario(t1, t2) || new Date();
             
+            // Asegurar que la fase tenga un valor por defecto
+            let faseGrupo = equiposDatos[t1].g || "Eliminatoria";
+
             let objPartido = {
                 t1: t1, t2: t2, d1: equiposDatos[t1].d, d2: equiposDatos[t2].d,
-                c1: equiposDatos[t1].c, c2: equiposDatos[t2].c, gr: equiposDatos[t1].g || "Eliminatoria",
+                c1: equiposDatos[t1].c, c2: equiposDatos[t2].c, gr: faseGrupo,
                 finalizado: res.status === 'FINISHED', 
                 isLive: res.status === 'LIVE',
                 fechaObj: fechaReal,
@@ -446,20 +452,26 @@
                 let g1 = res.g1, g2 = res.g2;
                 let c1 = objPartido.d1, c2 = objPartido.d2;
 
-                estadisticasChangos[c1].pj++; estadisticasChangos[c1].gf += g1; estadisticasChangos[c1].gc += g2;
-                estadisticasChangos[c2].pj++; estadisticasChangos[c2].gf += g2; estadisticasChangos[c2].gc += g1;
-                
-                if (g1 > g2) { estadisticasChangos[c1].pg++; estadisticasChangos[c1].pts += 3; estadisticasChangos[c2].pp++; }
-                else if (g1 < g2) { estadisticasChangos[c2].pg++; estadisticasChangos[c2].pts += 3; estadisticasChangos[c1].pp++; }
-                else { estadisticasChangos[c1].pe++; estadisticasChangos[c1].pts += 1; estadisticasChangos[c2].pe++; estadisticasChangos[c2].pts += 1; }
+                // VALIDACIÓN DE SEGURIDAD 2: Verificar que los participantes existan en el acumulador
+                if (estadisticasChangos[c1] && estadisticasChangos[c2]) {
+                    estadisticasChangos[c1].pj++; estadisticasChangos[c1].gf += g1; estadisticasChangos[c1].gc += g2;
+                    estadisticasChangos[c2].pj++; estadisticasChangos[c2].gf += g2; estadisticasChangos[c2].gc += g1;
+                    
+                    if (g1 > g2) { estadisticasChangos[c1].pg++; estadisticasChangos[c1].pts += 3; estadisticasChangos[c2].pp++; }
+                    else if (g1 < g2) { estadisticasChangos[c2].pg++; estadisticasChangos[c2].pts += 3; estadisticasChangos[c1].pp++; }
+                    else { estadisticasChangos[c1].pe++; estadisticasChangos[c1].pts += 1; estadisticasChangos[c2].pe++; estadisticasChangos[c2].pts += 1; }
+                }
 
-                let eq1 = gruposStats[equiposDatos[t1].g]?.find(e => e.equipo === t1);
-                let eq2 = gruposStats[equiposDatos[t2].g]?.find(e => e.equipo === t2);
-                if (eq1 && eq2) {
-                    eq1.pj++; eq2.pj++; eq1.gf += g1; eq2.gf += g2; eq1.gc += g2; eq2.gc += g1;
-                    if (g1 > g2) { eq1.pg++; eq2.pp++; eq1.pts += 3; }
-                    else if (g1 < g2) { eq2.pg++; eq1.pp++; eq2.pts += 3; }
-                    else { eq1.pe++; eq2.pe++; eq1.pts += 1; eq2.pts += 1; }
+                // VALIDACIÓN DE SEGURIDAD 3: Solo procesar tabla si el grupo existe en gruposStats
+                if (gruposStats[faseGrupo]) {
+                    let eq1 = gruposStats[faseGrupo].find(e => e.equipo === t1);
+                    let eq2 = gruposStats[faseGrupo].find(e => e.equipo === t2);
+                    if (eq1 && eq2) {
+                        eq1.pj++; eq2.pj++; eq1.gf += g1; eq2.gf += g2; eq1.gc += g2; eq2.gc += g1;
+                        if (g1 > g2) { eq1.pg++; eq2.pp++; eq1.pts += 3; }
+                        else if (g1 < g2) { eq2.pg++; eq1.pp++; eq2.pts += 3; }
+                        else { eq1.pe++; eq2.pe++; eq1.pts += 1; eq2.pts += 1; }
+                    }
                 }
             }
         });

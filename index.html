@@ -114,6 +114,7 @@
     <div class="main-tabs">
         <button class="m-tab active" id="m-calendarios" onclick="setMain('calendarios')">📅 Calendarios</button>
         <button class="m-tab" id="m-resultados" onclick="setMain('resultados')">📊 Resultados</button>
+        <button class="m-tab" id="m-envivo" onclick="setMain('envivo')">🔴 En Vivo</button>
         <button class="btn-actualizar" onclick="actualizarResultados(true)">⟳ Actualizar</button>
     </div>
     <div class="sub-tabs" id="sub-calendarios">
@@ -124,7 +125,7 @@
         <button class="s-tab" id="s-res-grupos" onclick="setSub('res-grupos')">🎯 Grupos</button>
         <button class="s-tab" id="s-res-chango" onclick="setSub('res-chango')">📈 Posiciones</button>
     </div>
-</div>
+    </div>
 
 <div class="contenedor-vistas">
     <div id="vista-cal-general" class="vista active"></div>
@@ -133,18 +134,12 @@
     </div>
     <div id="vista-res-grupos" class="vista"></div>
     <div id="vista-res-chango" class="vista">
-        <div class="seccion-contenedor">
-            <h3 class="seccion-titulo">🏆 Rendimiento Global (Puntos)</h3>
-            <div id="grafica-changos"></div>
         </div>
+    
+    <div id="vista-envivo-general" class="vista">
         <div class="seccion-contenedor">
-            <h3 class="seccion-titulo">📊 Tabla Estadística General</h3>
-            <div style="overflow-x:auto;">
-                <table class="tabla-stats">
-                    <thead><tr><th style="text-align:left;">Participante</th><th>PJ</th><th>G</th><th>E</th><th>P</th><th>GF</th><th>DG</th><th>Pts</th></tr></thead>
-                    <tbody id="tabla-body-changos"></tbody>
-                </table>
-            </div>
+            <h3 class="seccion-titulo">🔥 Partidos Jugándose Ahora</h3>
+            <div id="lista-juegos-en-vivo" class="grid-partidos"></div>
         </div>
     </div>
 </div>
@@ -416,8 +411,6 @@
 
         // LEER PARTIDOS DIRECTAMENTE DESDE LA ENTRADA EN VIVO DE LA FIFA
         // Esto rompe la dependencia de la lista manual estática
-        // LEER PARTIDOS DIRECTAMENTE DESDE LA ENTRADA EN VIVO DE LA FIFA
-        // LEER PARTIDOS DIRECTAMENTE DESDE LA ENTRADA EN VIVO DE LA FIFA
         Object.keys(resultadosEnVivo).forEach(key => {
             let [t1, t2] = key.split('-');
             
@@ -628,25 +621,95 @@
         });
         document.getElementById('grafica-changos').innerHTML = grafica;
         document.getElementById('tabla-body-changos').innerHTML = tabla;
+
+        // ========== NUEVA SECCIÓN: RENDERIZAR PARTIDOS EN VIVO ==========
+        const contenedorEnVivo = document.getElementById('lista-juegos-en-vivo');
+        let htmlEnVivo = '';
+        let contadorEnVivo = 0;
+
+        // Recorremos los días ordenados para extraer únicamente los partidos en vivo
+        Object.keys(diasOrdenados).forEach(dia => {
+            diasOrdenados[dia].forEach(pt => {
+                if (pt.isLive) {
+                    contadorEnVivo++;
+                    let res = getResult(pt.t1, pt.t2);
+                    let estadoInsignia = renderizarInsigniaEstado(res);
+                    let scoreHtml = `<div class="score">${res.g1} - ${res.g2}</div>`;
+                    let h2hHtml = obtenerHtmlHistorial(pt.t1, pt.t2);
+
+                    htmlEnVivo += `
+                    <div class="partido-card partido-vivo" onclick="alternarTarjetaPartido(this)">
+                        <div class="p-info"><span>⏰ ${pt.hora}</span><span>Fase: ${pt.gr}</span></div>
+                        <div class="p-teams">
+                            <div class="team">
+                                <img src="https://flagcdn.com/w40/${pt.c1}.png" class="img-bandera">
+                                <span class="t-nombre">${pt.t1}</span>
+                                <span class="t-dueño" style="background-color:${coloresParticipantes[pt.d1] || '#555'}">${pt.d1}</span>
+                            </div>
+                            <div style="display:flex;flex-direction:column;align-items:center;">
+                                ${scoreHtml}
+                                ${estadoInsignia}
+                            </div>
+                            <div class="team">
+                                <img src="https://flagcdn.com/w40/${pt.c2}.png" class="img-bandera">
+                                <span class="t-nombre">${pt.t2}</span>
+                                <span class="t-dueño" style="background-color:${coloresParticipantes[pt.d2] || '#555'}">${pt.d2}</span>
+                            </div>
+                        </div>
+                        ${h2hHtml}
+                    </div>`;
+                }
+            });
+        });
+
+        // Si no hay partidos en vivo en este minuto, mostramos un mensaje amigable
+        if (contadorEnVivo === 0) {
+            htmlEnVivo = `<div class="h-vacio" style="grid-column: 1 / -1; padding: 30px; font-size: 1rem;">
+                            ☕ No hay partidos en vivo en este momento. ¡Vuelve más tarde!
+                          </div>`;
+        }
+        
+        contenedorEnVivo.innerHTML = htmlEnVivo;
     }
 
     function setMain(mainStr) {
         document.querySelectorAll('.m-tab').forEach(b => b.classList.remove('active'));
         document.getElementById('m-' + mainStr).classList.add('active');
+        
+        // Control de visibilidad de las sub-pestañas
         document.getElementById('sub-calendarios').style.display = mainStr === 'calendarios' ? 'flex' : 'none';
         document.getElementById('sub-resultados').style.display = mainStr === 'resultados' ? 'flex' : 'none';
-        setSub(mainStr === 'calendarios' ? 'cal-general' : 'res-grupos');
+        
+        if (mainStr === 'calendarios') {
+            setSub('cal-general');
+        } else if (mainStr === 'resultados') {
+            setSub('res-grupos');
+        } else if (mainStr === 'envivo') {
+            // "En vivo" no tiene sub-pestañas, activa su vista directamente
+            setSub('envivo-general');
+        }
     }
     
     function setSub(subStr) {
-        document.querySelectorAll('.s-tab').forEach(b => b.classList.remove('active'));
-        document.getElementById('s-' + subStr).classList.add('active');
+        // Solo altera botones secundarios si el botón realmente existe en el HTML
+        const botonSub = document.getElementById('s-' + subStr);
+        if (botonSub) {
+            document.querySelectorAll('.s-tab').forEach(b => b.classList.remove('active'));
+            botonSub.classList.add('active');
+        }
+        
         document.querySelectorAll('.vista').forEach(v => v.classList.remove('active'));
         document.getElementById('vista-' + subStr).classList.add('active');
+        
         window.scrollTo({ top: 0, behavior: 'smooth' });
+        
         if (subStr === 'res-chango') {
             setTimeout(() => {
-                document.querySelectorAll('.barra-progreso').forEach(b => { let w = b.style.width; b.style.width = '0%'; setTimeout(() => b.style.width = w, 20); });
+                document.querySelectorAll('.barra-progreso').forEach(b => { 
+                    let w = b.style.width; 
+                    b.style.width = '0%'; 
+                    setTimeout(() => b.style.width = w, 20); 
+                });
             }, 50);
         }
     }

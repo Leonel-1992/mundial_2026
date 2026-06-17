@@ -297,8 +297,10 @@
         const revKey = `${t2}-${t1}`;
         if (resultadosEnVivo[revKey]) {
             const rev = resultadosEnVivo[revKey];
-            if (rev.g1 !== undefined && rev.g2 !== undefined)
-                return { ...rev, g1: rev.g2, g2: rev.g1, status: rev.status, minute: rev.minute, isLive: rev.isLive };
+            if (rev.g1 !== undefined && rev.g2 !== undefined) {
+                // Devolvemos una copia limpia con los goles volteados correspondientemente
+                return { status: rev.status, minute: rev.minute, isLive: rev.isLive, g1: rev.g2, g2: rev.g1 };
+            }
             return rev;
         }
         return null;
@@ -380,10 +382,10 @@
     function construirInterfaz() {
         // Asignación de dueños basada en tu imagen
         const equiposDatos = {
-            "Argentina": {d: "Leonel Escobar", c: "ar", g: "J"}, "Corea del Sur": {d: "Leonel Escobar", c: "kr", g: "A"}, "Costa de Marfil": {d: "Leonel Escobar", c: "ci", g: "E"}, "Jordania": {d: "Leonel Escobar", c: "jo", g: "J"},
+            "Argentina": {d: "Leonel Escobar", c: "ar", g: "J"}, "Corea del Sur": {d: "Leonel Escobar", c: "kr", g: "A"}, "Costa de Marfil": {d: "Leonel Escobar", c: "ci", g: "E"}, "Paraguay": {d: "Leonel Escobar", c: "py", g: "D"},
             "Bélgica": {d: "Luis Verdugo", c: "be", g: "G"}, "Ecuador": {d: "Luis Verdugo", c: "ec", g: "E"}, "Escocia": {d: "Luis Verdugo", c: "gb-sct", g: "C"}, "Nueva Zelanda": {d: "Luis Verdugo", c: "nz", g: "G"},
             "Portugal": {d: "Juan Manuel Barraza", c: "pt", g: "K"}, "Australia": {d: "Juan Manuel Barraza", c: "au", g: "D"}, "Túnez": {d: "Juan Manuel Barraza", c: "tn", g: "F"}, "Ghana": {d: "Juan Manuel Barraza", c: "gh", g: "L"},
-            "Croacia": {d: "Donaldo Ruiz", c: "hr", g: "L"}, "USA": {d: "Donaldo Ruiz", c: "us", g: "D"}, "Paraguay": {d: "Donaldo Ruiz", c: "py", g: "D"}, "Arabia S.": {d: "Donaldo Ruiz", c: "sa", g: "H"},
+            "Croacia": {d: "Donaldo Ruiz", c: "hr", g: "L"}, "USA": {d: "Donaldo Ruiz", c: "us", g: "D"}, "Jordania": {d: "Donaldo Ruiz", c: "jo", g: "J"}, "Arabia S.": {d: "Donaldo Ruiz", c: "sa", g: "H"},
             "Francia": {d: "Avril Carvajal", c: "fr", g: "I"}, "Suiza": {d: "Avril Carvajal", c: "ch", g: "B"}, "Egipto": {d: "Avril Carvajal", c: "eg", g: "G"}, "Cabo Verde": {d: "Avril Carvajal", c: "cv", g: "H"},
             "Colombia": {d: "Edwin Perez", c: "co", g: "K"}, "Senegal": {d: "Edwin Perez", c: "sn", g: "I"}, "Panamá": {d: "Edwin Perez", c: "pa", g: "L"}, "Bosnia": {d: "Edwin Perez", c: "ba", g: "B"},
             "Inglaterra": {d: "Armando Morales", c: "gb-eng", g: "L"}, "Turquía": {d: "Armando Morales", c: "tr", g: "D"}, "Canadá": {d: "Armando Morales", c: "ca", g: "B"}, "Sudáfrica": {d: "Armando Morales", c: "za", g: "A"},
@@ -414,16 +416,23 @@
 
         // LEER PARTIDOS DIRECTAMENTE DESDE LA ENTRADA EN VIVO DE LA FIFA
         // Esto rompe la dependencia de la lista manual estática
+        // LEER PARTIDOS DIRECTAMENTE DESDE LA ENTRADA EN VIVO DE LA FIFA
+        // LEER PARTIDOS DIRECTAMENTE DESDE LA ENTRADA EN VIVO DE LA FIFA
         Object.keys(resultadosEnVivo).forEach(key => {
             let [t1, t2] = key.split('-');
-            if (!equiposDatos[t1] || !equiposDatos[t2]) return; // Ignorar si son nombres no mapeados
+            
+            // VALIDACIÓN DE SEGURIDAD 1: Si alguno de los dos equipos no está en tu quiniela, ignorar.
+            if (!equiposDatos[t1] || !equiposDatos[t2]) return; 
 
             let res = resultadosEnVivo[key];
             let fechaReal = getHorario(t1, t2) || new Date();
             
+            // Asegurar que la fase tenga un valor por defecto
+            let faseGrupo = equiposDatos[t1].g || "Eliminatoria";
+
             let objPartido = {
                 t1: t1, t2: t2, d1: equiposDatos[t1].d, d2: equiposDatos[t2].d,
-                c1: equiposDatos[t1].c, c2: equiposDatos[t2].c, gr: equiposDatos[t1].g || "Eliminatoria",
+                c1: equiposDatos[t1].c, c2: equiposDatos[t2].c, gr: faseGrupo,
                 finalizado: res.status === 'FINISHED', 
                 isLive: res.status === 'LIVE',
                 fechaObj: fechaReal,
@@ -434,36 +443,35 @@
 
             if (!diasOrdenados[objPartido.fecha]) diasOrdenados[objPartido.fecha] = [];
             diasOrdenados[objPartido.fecha].push(objPartido);
-
-            // Agrega el partido al Dueño 1
-            if (partidosPorChango[objPartido.d1]) {
-                partidosPorChango[objPartido.d1].push(objPartido);
-            }
-            // Agrega el partido al Dueño 2 SOLO si no es la misma persona que el Dueño 1
-            if (partidosPorChango[objPartido.d2] && objPartido.d1 !== objPartido.d2) {
-                partidosPorChango[objPartido.d2].push(objPartido);
-            }
+            
+            if (partidosPorChango[objPartido.d1]) partidosPorChango[objPartido.d1].push(objPartido);
+            if (partidosPorChango[objPartido.d2]) partidosPorChango[objPartido.d2].push(objPartido);
 
             // Procesar estadísticas de puntos si está finalizado
             if (res.status === 'FINISHED' && res.g1 !== undefined) {
                 let g1 = res.g1, g2 = res.g2;
                 let c1 = objPartido.d1, c2 = objPartido.d2;
 
-                estadisticasChangos[c1].pj++; estadisticasChangos[c1].gf += g1; estadisticasChangos[c1].gc += g2;
-                estadisticasChangos[c2].pj++; estadisticasChangos[c2].gf += g2; estadisticasChangos[c2].gc += g1;
-                
-                if (g1 > g2) { estadisticasChangos[c1].pg++; estadisticasChangos[c1].pts += 3; estadisticasChangos[c2].pp++; }
-                else if (g1 < g2) { estadisticasChangos[c2].pg++; estadisticasChangos[c2].pts += 3; estadisticasChangos[c1].pp++; }
-                else { estadisticasChangos[c1].pe++; estadisticasChangos[c1].pts += 1; estadisticasChangos[c2].pe++; estadisticasChangos[c2].pts += 1; }
+                // VALIDACIÓN DE SEGURIDAD 2: Verificar que los participantes existan en el acumulador
+                if (estadisticasChangos[c1] && estadisticasChangos[c2]) {
+                    estadisticasChangos[c1].pj++; estadisticasChangos[c1].gf += g1; estadisticasChangos[c1].gc += g2;
+                    estadisticasChangos[c2].pj++; estadisticasChangos[c2].gf += g2; estadisticasChangos[c2].gc += g1;
+                    
+                    if (g1 > g2) { estadisticasChangos[c1].pg++; estadisticasChangos[c1].pts += 3; estadisticasChangos[c2].pp++; }
+                    else if (g1 < g2) { estadisticasChangos[c2].pg++; estadisticasChangos[c2].pts += 3; estadisticasChangos[c1].pp++; }
+                    else { estadisticasChangos[c1].pe++; estadisticasChangos[c1].pts += 1; estadisticasChangos[c2].pe++; estadisticasChangos[c2].pts += 1; }
+                }
 
-                // Actualizar tablas de grupos (solo aplica si el partido pertenece a la fase de grupos original)
-                let eq1 = gruposStats[equiposDatos[t1].g]?.find(e => e.equipo === t1);
-                let eq2 = gruposStats[equiposDatos[t2].g]?.find(e => e.equipo === t2);
-                if (eq1 && eq2) {
-                    eq1.pj++; eq2.pj++; eq1.gf += g1; eq2.gf += g2; eq1.gc += g2; eq2.gc += g1;
-                    if (g1 > g2) { eq1.pg++; eq2.pp++; eq1.pts += 3; }
-                    else if (g1 < g2) { eq2.pg++; eq1.pp++; eq2.pts += 3; }
-                    else { eq1.pe++; eq2.pe++; eq1.pts += 1; eq2.pts += 1; }
+                // VALIDACIÓN DE SEGURIDAD 3: Solo procesar tabla si el grupo existe en gruposStats
+                if (gruposStats[faseGrupo]) {
+                    let eq1 = gruposStats[faseGrupo].find(e => e.equipo === t1);
+                    let eq2 = gruposStats[faseGrupo].find(e => e.equipo === t2);
+                    if (eq1 && eq2) {
+                        eq1.pj++; eq2.pj++; eq1.gf += g1; eq2.gf += g2; eq1.gc += g2; eq2.gc += g1;
+                        if (g1 > g2) { eq1.pg++; eq2.pp++; eq1.pts += 3; }
+                        else if (g1 < g2) { eq2.pg++; eq1.pp++; eq2.pts += 3; }
+                        else { eq1.pe++; eq2.pe++; eq1.pts += 1; eq2.pts += 1; }
+                    }
                 }
             }
         });
@@ -534,6 +542,8 @@
         contenedorParticipantes.innerHTML = htmlSecciones;
 
         // Renderizar partidos individuales de cada persona (Filtrando duplicados internos)
+        // Renderizar partidos individuales de cada persona (Filtrando duplicados internos)
+        // Renderizar partidos individuales de cada persona (Corregido: Asignación de etiquetas y colores fijos)
         Object.keys(coloresParticipantes).forEach(persona => {
             const div = document.getElementById('lista-pers-' + persona.replace(/\s+/g, ''));
             if (!div) return;
@@ -541,48 +551,48 @@
             let misPartidos = partidosPorChango[persona] || [];
             misPartidos.sort((a,b) => (a.fechaObj || new Date(0)) - (b.fechaObj || new Date(0)));
             
-            // Usamos un set para llevar el registro de qué partidos ya dibujamos en esta sección
             let partidosDibujados = new Set();
             
             misPartidos.forEach(pt => {
-                // Creamos un identificador único para el juego (ej: "Jordania-Argentina")
                 let partidoId = `${pt.t1}-${pt.t2}`;
-                if (partidosDibujados.has(partidoId)) return; // Si ya se dibujó para esta persona, nos lo saltamos
+                if (partidosDibujados.has(partidoId)) return;
                 partidosDibujados.add(partidoId);
 
-                let esLocal = (pt.d1 === persona);
                 let res = getResult(pt.t1, pt.t2);
                 let estado = renderizarInsigniaEstado(res);
                 let scoreCenter = (res && (res.status === 'FINISHED' || res.status === 'LIVE')) ?
-                    `<div style="font-weight:900; font-size:1.1rem; background:#eef2f5; padding:2px 8px; border-radius:6px;">${esLocal ? res.g1 : res.g2} - ${esLocal ? res.g2 : res.g1}</div>` :
+                    `<div style="font-weight:900; font-size:1.1rem; background:#eef2f5; padding:2px 8px; border-radius:6px;">${res.g1} - ${res.g2}</div>` :
                     `<span style="color:#aaa; font-weight:bold;">VS</span>`;
                 let h2hHtml = obtenerHtmlHistorial(pt.t1, pt.t2);
 
-                // Lógica inteligente para las etiquetas cuando juegas contra ti mismo
-                let etiquetaIzquierda = esLocal ? "Tu equipo" : (pt.d1 === pt.d2 ? "Tu equipo (vs ti)" : `Rival: ${pt.d1}`);
-                let etiquetaDerecha = !esLocal ? "Tu equipo" : (pt.d1 === pt.d2 ? "Tu equipo (vs ti)" : `Rival: ${pt.d2}`);
+                // --- LÓGICA DIRECTA DE ASIGNACIÓN PARA EL EQUIPO 1 (IZQUIERDA) ---
+                let etiquetaEq1 = (pt.d1 === persona) ? "Tu equipo" : `Rival: ${pt.d1}`;
+                let colorEq1 = coloresParticipantes[pt.d1] || '#555';
+
+                // --- LÓGICA DIRECTA DE ASIGNACIÓN PARA EL EQUIPO 2 (DERECHA) ---
+                let etiquetaEq2 = (pt.d2 === persona) ? "Tu equipo" : `Rival: ${pt.d2}`;
+                let colorEq2 = coloresParticipantes[pt.d2] || '#555';
 
                 html += `
                 <div class="p-mini ${pt.finalizado ? 'partido-pasado' : ''}" onclick="alternarTarjetaPartido(this)">
                     <div class="p-mini-fecha">${pt.fecha} - ${pt.hora} hrs</div>
                     <div class="p-mini-equipos">
                         <div class="p-mini-col">
-                            <img src="https://flagcdn.com/w20/${esLocal ? pt.c1 : pt.c2}.png" style="width:28px; border-radius:3px;">
-                            <span style="font-size:0.8rem;">${esLocal ? pt.t1 : pt.t2}</span>
-                            <span class="t-dueño" style="font-size:0.65rem; background-color:${esLocal ? coloresParticipantes[pt.d1] : coloresParticipantes[pt.d2]}">${etiquetaIzquierda}</span>
+                            <img src="https://flagcdn.com/w20/${pt.c1}.png" style="width:28px; border-radius:3px;">
+                            <span style="font-size:0.8rem;">${pt.t1}</span>
+                            <span class="t-dueño" style="font-size:0.65rem; background-color:${colorEq1}">${etiquetaEq1}</span>
                         </div>
                         <div style="display:flex; flex-direction:column; align-items:center;">${scoreCenter}${estado}</div>
                         <div class="p-mini-col">
-                            <img src="https://flagcdn.com/w20/${esLocal ? pt.c2 : pt.c1}.png" style="width:28px; border-radius:3px;">
-                            <span style="font-size:0.8rem;">${esLocal ? pt.t2 : pt.t1}</span>
-                            <span class="t-dueño" style="font-size:0.65rem; background-color:${!esLocal ? coloresParticipantes[pt.d1] : coloresParticipantes[pt.d2]}">${etiquetaDerecha}</span>
+                            <img src="https://flagcdn.com/w20/${pt.c2}.png" style="width:28px; border-radius:3px;">
+                            <span style="font-size:0.8rem;">${pt.t2}</span>
+                            <span class="t-dueño" style="font-size:0.65rem; background-color:${colorEq2}">${etiquetaEq2}</span>
                         </div>
                     </div>
                     ${h2hHtml}
                 </div>`;
             });
             
-            // Corregimos dinámicamente el contador del encabezado para que muestre el número real de tarjetas pintadas
             const summaryElement = div.parentElement.querySelector('summary');
             if (summaryElement) {
                 summaryElement.innerHTML = `👤 ${persona} (${partidosDibujados.size} Partidos)`;

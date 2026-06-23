@@ -114,7 +114,6 @@
     <div class="main-tabs">
         <button class="m-tab active" id="m-calendarios" onclick="setMain('calendarios')">📅 Calendarios</button>
         <button class="m-tab" id="m-resultados" onclick="setMain('resultados')">📊 Resultados</button>
-        <button class="m-tab" id="m-envivo" onclick="setMain('envivo')">🔴 En Vivo</button>
         <button class="btn-actualizar" onclick="actualizarResultados(true)">⟳ Actualizar</button>
     </div>
     <div class="sub-tabs" id="sub-calendarios">
@@ -125,7 +124,7 @@
         <button class="s-tab" id="s-res-grupos" onclick="setSub('res-grupos')">🎯 Grupos</button>
         <button class="s-tab" id="s-res-chango" onclick="setSub('res-chango')">📈 Posiciones</button>
     </div>
-    </div>
+</div>
 
 <div class="contenedor-vistas">
     <div id="vista-cal-general" class="vista active"></div>
@@ -134,12 +133,18 @@
     </div>
     <div id="vista-res-grupos" class="vista"></div>
     <div id="vista-res-chango" class="vista">
-        </div>
-    
-    <div id="vista-envivo-general" class="vista">
         <div class="seccion-contenedor">
-            <h3 class="seccion-titulo">🔥 Partidos Jugándose Ahora</h3>
-            <div id="lista-juegos-en-vivo" class="grid-partidos"></div>
+            <h3 class="seccion-titulo">🏆 Rendimiento Global (Puntos)</h3>
+            <div id="grafica-changos"></div>
+        </div>
+        <div class="seccion-contenedor">
+            <h3 class="seccion-titulo">📊 Tabla Estadística General</h3>
+            <div style="overflow-x:auto;">
+                <table class="tabla-stats">
+                    <thead><tr><th style="text-align:left;">Participante</th><th>PJ</th><th>G</th><th>E</th><th>P</th><th>GF</th><th>DG</th><th>Pts</th></tr></thead>
+                    <tbody id="tabla-body-changos"></tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
@@ -249,6 +254,8 @@
                     const status = (m.status || '').toUpperCase();
                     const isComplete = ['COMPLETE', 'FINISHED', 'PLAYED'].includes(status);
                     const isLive = ['PLAYING', 'LIVE', 'IN_PROGRESS'].includes(status);
+                    
+                    const ciudadSede = m.venueCity || "Sede por confirmar"; // 👈 CAMBIO 1: Extraer la ciudad desde la API de FIFA
 
                     const key = `${local}-${visita}`;
                     
@@ -262,7 +269,8 @@
                             g2: parseInt(m.awayScore, 10),
                             status: 'FINISHED',
                             minute: null,
-                            isLive: false
+                            isLive: false,
+                            ciudad: ciudadSede // 👈 CAMBIO 1: Almacenar en el objeto de resultados
                         };
                     } else if (isLive && m.homeScore !== null && m.awayScore !== null) {
                         resultadosEnVivo[key] = {
@@ -270,10 +278,11 @@
                             g2: parseInt(m.awayScore, 10),
                             status: 'LIVE',
                             minute: m.minutes || 0,
-                            isLive: true
+                            isLive: true,
+                            ciudad: ciudadSede // 👈 CAMBIO 1: Almacenar en el objeto de resultados
                         };
                     } else {
-                        resultadosEnVivo[key] = { status: 'SCHEDULED', isLive: false };
+                        resultadosEnVivo[key] = { status: 'SCHEDULED', isLive: false, ciudad: ciudadSede }; // 👈 CAMBIO 1
                     }
                 }
             }
@@ -293,8 +302,7 @@
         if (resultadosEnVivo[revKey]) {
             const rev = resultadosEnVivo[revKey];
             if (rev.g1 !== undefined && rev.g2 !== undefined) {
-                // Devolvemos una copia limpia con los goles volteados correspondientemente
-                return { status: rev.status, minute: rev.minute, isLive: rev.isLive, g1: rev.g2, g2: rev.g1 };
+                return { status: rev.status, minute: rev.minute, isLive: rev.isLive, g1: rev.g2, g2: rev.g1, ciudad: rev.ciudad };
             }
             return rev;
         }
@@ -375,7 +383,6 @@
     }
 
     function construirInterfaz() {
-        // Asignación de dueños basada en tu imagen
         const equiposDatos = {
             "Argentina": {d: "Leonel Escobar", c: "ar", g: "J"}, "Corea del Sur": {d: "Leonel Escobar", c: "kr", g: "A"}, "Costa de Marfil": {d: "Leonel Escobar", c: "ci", g: "E"}, "Paraguay": {d: "Leonel Escobar", c: "py", g: "D"},
             "Bélgica": {d: "Luis Verdugo", c: "be", g: "G"}, "Ecuador": {d: "Luis Verdugo", c: "ec", g: "E"}, "Escocia": {d: "Luis Verdugo", c: "gb-sct", g: "C"}, "Nueva Zelanda": {d: "Luis Verdugo", c: "nz", g: "G"},
@@ -410,17 +417,14 @@
         }
 
         // LEER PARTIDOS DIRECTAMENTE DESDE LA ENTRADA EN VIVO DE LA FIFA
-        // Esto rompe la dependencia de la lista manual estática
         Object.keys(resultadosEnVivo).forEach(key => {
             let [t1, t2] = key.split('-');
             
-            // VALIDACIÓN DE SEGURIDAD 1: Si alguno de los dos equipos no está en tu quiniela, ignorar.
             if (!equiposDatos[t1] || !equiposDatos[t2]) return; 
 
             let res = resultadosEnVivo[key];
             let fechaReal = getHorario(t1, t2) || new Date();
             
-            // Asegurar que la fase tenga un valor por defecto
             let faseGrupo = equiposDatos[t1].g || "Eliminatoria";
 
             let objPartido = {
@@ -431,7 +435,8 @@
                 fechaObj: fechaReal,
                 hora: formatearHoraLocal(fechaReal),
                 fecha: formatearFechaLocal(fechaReal),
-                yaPaso: esFechaPasada(fechaReal)
+                yaPaso: esFechaPasada(fechaReal),
+                ciudad: res.ciudad || "Sede por confirmar" // 👈 CAMBIO 2: Transportar la ciudad procesada al objeto interno de renderizado
             };
 
             if (!diasOrdenados[objPartido.fecha]) diasOrdenados[objPartido.fecha] = [];
@@ -445,7 +450,6 @@
                 let g1 = res.g1, g2 = res.g2;
                 let c1 = objPartido.d1, c2 = objPartido.d2;
 
-                // VALIDACIÓN DE SEGURIDAD 2: Verificar que los participantes existan en el acumulador
                 if (estadisticasChangos[c1] && estadisticasChangos[c2]) {
                     estadisticasChangos[c1].pj++; estadisticasChangos[c1].gf += g1; estadisticasChangos[c1].gc += g2;
                     estadisticasChangos[c2].pj++; estadisticasChangos[c2].gf += g2; estadisticasChangos[c2].gc += g1;
@@ -455,7 +459,6 @@
                     else { estadisticasChangos[c1].pe++; estadisticasChangos[c1].pts += 1; estadisticasChangos[c2].pe++; estadisticasChangos[c2].pts += 1; }
                 }
 
-                // VALIDACIÓN DE SEGURIDAD 3: Solo procesar tabla si el grupo existe en gruposStats
                 if (gruposStats[faseGrupo]) {
                     let eq1 = gruposStats[faseGrupo].find(e => e.equipo === t1);
                     let eq2 = gruposStats[faseGrupo].find(e => e.equipo === t2);
@@ -505,7 +508,9 @@
 
                 gridHTML += `
                 <div class="partido-card ${clsAd}" onclick="alternarTarjetaPartido(this)">${badge}
-                    <div class="p-info"><span>⏰ ${pt.hora}</span><span>Fase: ${pt.gr}</span></div>
+                    <div class="p-info">
+                        <span>⏰ ${pt.hora} (${pt.ciudad})</span> <span>Fase: ${pt.gr}</span>
+                    </div>
                     <div class="p-teams">
                         <div class="team"><img src="https://flagcdn.com/w40/${pt.c1}.png" class="img-bandera"><span class="t-nombre">${pt.t1}</span><span class="t-dueño" style="background-color:${coloresParticipantes[pt.d1] || '#555'}">${pt.d1}</span></div>
                         <div style="display:flex;flex-direction:column;align-items:center;">${scoreHtml}${estadoInsignia}</div>
@@ -534,9 +539,6 @@
         });
         contenedorParticipantes.innerHTML = htmlSecciones;
 
-        // Renderizar partidos individuales de cada persona (Filtrando duplicados internos)
-        // Renderizar partidos individuales de cada persona (Filtrando duplicados internos)
-        // Renderizar partidos individuales de cada persona (Corregido: Asignación de etiquetas y colores fijos)
         Object.keys(coloresParticipantes).forEach(persona => {
             const div = document.getElementById('lista-pers-' + persona.replace(/\s+/g, ''));
             if (!div) return;
@@ -558,18 +560,15 @@
                     `<span style="color:#aaa; font-weight:bold;">VS</span>`;
                 let h2hHtml = obtenerHtmlHistorial(pt.t1, pt.t2);
 
-                // --- LÓGICA DIRECTA DE ASIGNACIÓN PARA EL EQUIPO 1 (IZQUIERDA) ---
                 let etiquetaEq1 = (pt.d1 === persona) ? "Tu equipo" : `Rival: ${pt.d1}`;
                 let colorEq1 = coloresParticipantes[pt.d1] || '#555';
 
-                // --- LÓGICA DIRECTA DE ASIGNACIÓN PARA EL EQUIPO 2 (DERECHA) ---
                 let etiquetaEq2 = (pt.d2 === persona) ? "Tu equipo" : `Rival: ${pt.d2}`;
                 let colorEq2 = coloresParticipantes[pt.d2] || '#555';
 
                 html += `
                 <div class="p-mini ${pt.finalizado ? 'partido-pasado' : ''}" onclick="alternarTarjetaPartido(this)">
-                    <div class="p-mini-fecha">${pt.fecha} - ${pt.hora} hrs</div>
-                    <div class="p-mini-equipos">
+                    <div class="p-mini-fecha">${pt.fecha} - ${pt.hora} hrs (${pt.ciudad})</div> <div class="p-mini-equipos">
                         <div class="p-mini-col">
                             <img src="https://flagcdn.com/w20/${pt.c1}.png" style="width:28px; border-radius:3px;">
                             <span style="font-size:0.8rem;">${pt.t1}</span>
@@ -621,95 +620,25 @@
         });
         document.getElementById('grafica-changos').innerHTML = grafica;
         document.getElementById('tabla-body-changos').innerHTML = tabla;
-
-        // ========== NUEVA SECCIÓN: RENDERIZAR PARTIDOS EN VIVO ==========
-        const contenedorEnVivo = document.getElementById('lista-juegos-en-vivo');
-        let htmlEnVivo = '';
-        let contadorEnVivo = 0;
-
-        // Recorremos los días ordenados para extraer únicamente los partidos en vivo
-        Object.keys(diasOrdenados).forEach(dia => {
-            diasOrdenados[dia].forEach(pt => {
-                if (pt.isLive) {
-                    contadorEnVivo++;
-                    let res = getResult(pt.t1, pt.t2);
-                    let estadoInsignia = renderizarInsigniaEstado(res);
-                    let scoreHtml = `<div class="score">${res.g1} - ${res.g2}</div>`;
-                    let h2hHtml = obtenerHtmlHistorial(pt.t1, pt.t2);
-
-                    htmlEnVivo += `
-                    <div class="partido-card partido-vivo" onclick="alternarTarjetaPartido(this)">
-                        <div class="p-info"><span>⏰ ${pt.hora}</span><span>Fase: ${pt.gr}</span></div>
-                        <div class="p-teams">
-                            <div class="team">
-                                <img src="https://flagcdn.com/w40/${pt.c1}.png" class="img-bandera">
-                                <span class="t-nombre">${pt.t1}</span>
-                                <span class="t-dueño" style="background-color:${coloresParticipantes[pt.d1] || '#555'}">${pt.d1}</span>
-                            </div>
-                            <div style="display:flex;flex-direction:column;align-items:center;">
-                                ${scoreHtml}
-                                ${estadoInsignia}
-                            </div>
-                            <div class="team">
-                                <img src="https://flagcdn.com/w40/${pt.c2}.png" class="img-bandera">
-                                <span class="t-nombre">${pt.t2}</span>
-                                <span class="t-dueño" style="background-color:${coloresParticipantes[pt.d2] || '#555'}">${pt.d2}</span>
-                            </div>
-                        </div>
-                        ${h2hHtml}
-                    </div>`;
-                }
-            });
-        });
-
-        // Si no hay partidos en vivo en este minuto, mostramos un mensaje amigable
-        if (contadorEnVivo === 0) {
-            htmlEnVivo = `<div class="h-vacio" style="grid-column: 1 / -1; padding: 30px; font-size: 1rem;">
-                            ☕ No hay partidos en vivo en este momento. ¡Vuelve más tarde!
-                          </div>`;
-        }
-        
-        contenedorEnVivo.innerHTML = htmlEnVivo;
     }
 
     function setMain(mainStr) {
         document.querySelectorAll('.m-tab').forEach(b => b.classList.remove('active'));
         document.getElementById('m-' + mainStr).classList.add('active');
-        
-        // Control de visibilidad de las sub-pestañas
         document.getElementById('sub-calendarios').style.display = mainStr === 'calendarios' ? 'flex' : 'none';
         document.getElementById('sub-resultados').style.display = mainStr === 'resultados' ? 'flex' : 'none';
-        
-        if (mainStr === 'calendarios') {
-            setSub('cal-general');
-        } else if (mainStr === 'resultados') {
-            setSub('res-grupos');
-        } else if (mainStr === 'envivo') {
-            // "En vivo" no tiene sub-pestañas, activa su vista directamente
-            setSub('envivo-general');
-        }
+        setSub(mainStr === 'calendarios' ? 'cal-general' : 'res-grupos');
     }
     
     function setSub(subStr) {
-        // Solo altera botones secundarios si el botón realmente existe en el HTML
-        const botonSub = document.getElementById('s-' + subStr);
-        if (botonSub) {
-            document.querySelectorAll('.s-tab').forEach(b => b.classList.remove('active'));
-            botonSub.classList.add('active');
-        }
-        
+        document.querySelectorAll('.s-tab').forEach(b => b.classList.remove('active'));
+        document.getElementById('s-' + subStr).classList.add('active');
         document.querySelectorAll('.vista').forEach(v => v.classList.remove('active'));
         document.getElementById('vista-' + subStr).classList.add('active');
-        
         window.scrollTo({ top: 0, behavior: 'smooth' });
-        
         if (subStr === 'res-chango') {
             setTimeout(() => {
-                document.querySelectorAll('.barra-progreso').forEach(b => { 
-                    let w = b.style.width; 
-                    b.style.width = '0%'; 
-                    setTimeout(() => b.style.width = w, 20); 
-                });
+                document.querySelectorAll('.barra-progreso').forEach(b => { let w = b.style.width; b.style.width = '0%'; setTimeout(() => b.style.width = w, 20); });
             }, 50);
         }
     }

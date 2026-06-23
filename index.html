@@ -254,6 +254,9 @@
                     const status = (m.status || '').toUpperCase();
                     const isComplete = ['COMPLETE', 'FINISHED', 'PLAYED'].includes(status);
                     const isLive = ['PLAYING', 'LIVE', 'IN_PROGRESS'].includes(status);
+                    
+                    const ciudadSede = m.venueCity || "Sede por confirmar"; // 👈 CAMBIO 1: Extraer la ciudad desde la API de FIFA
+                    const estadioSede = m.venueName || "Sede por confirmar"; // 👈 CAMBIO 2: Extraer la ciudad desde la API de FIFA
 
                     const key = `${local}-${visita}`;
                     
@@ -267,7 +270,9 @@
                             g2: parseInt(m.awayScore, 10),
                             status: 'FINISHED',
                             minute: null,
-                            isLive: false
+                            isLive: false,
+                            ciudad: ciudadSede, // 👈 CAMBIO 1: Almacenar en el objeto de resultados
+                            estadio: estadioSede // 👈 CAMBIO 1: Almacenar en el objeto de resultados
                         };
                     } else if (isLive && m.homeScore !== null && m.awayScore !== null) {
                         resultadosEnVivo[key] = {
@@ -275,10 +280,12 @@
                             g2: parseInt(m.awayScore, 10),
                             status: 'LIVE',
                             minute: m.minutes || 0,
-                            isLive: true
+                            isLive: true,
+                            ciudad: ciudadSede, // 👈 CAMBIO 1: Almacenar en el objeto de resultados
+                            estadio: estadioSede // 👈 CAMBIO 1: Almacenar en el objeto de resultados
                         };
                     } else {
-                        resultadosEnVivo[key] = { status: 'SCHEDULED', isLive: false };
+                        resultadosEnVivo[key] = { status: 'SCHEDULED', isLive: false, ciudad: ciudadSede, estadio: estadioSede }; // 👈 CAMBIO 1
                     }
                 }
             }
@@ -298,8 +305,7 @@
         if (resultadosEnVivo[revKey]) {
             const rev = resultadosEnVivo[revKey];
             if (rev.g1 !== undefined && rev.g2 !== undefined) {
-                // Devolvemos una copia limpia con los goles volteados correspondientemente
-                return { status: rev.status, minute: rev.minute, isLive: rev.isLive, g1: rev.g2, g2: rev.g1 };
+                return { status: rev.status, minute: rev.minute, isLive: rev.isLive, g1: rev.g2, g2: rev.g1, ciudad: rev.ciudad };
             }
             return rev;
         }
@@ -380,7 +386,6 @@
     }
 
     function construirInterfaz() {
-        // Asignación de dueños basada en tu imagen
         const equiposDatos = {
             "Argentina": {d: "Leonel Escobar", c: "ar", g: "J"}, "Corea del Sur": {d: "Leonel Escobar", c: "kr", g: "A"}, "Costa de Marfil": {d: "Leonel Escobar", c: "ci", g: "E"}, "Paraguay": {d: "Leonel Escobar", c: "py", g: "D"},
             "Bélgica": {d: "Luis Verdugo", c: "be", g: "G"}, "Ecuador": {d: "Luis Verdugo", c: "ec", g: "E"}, "Escocia": {d: "Luis Verdugo", c: "gb-sct", g: "C"}, "Nueva Zelanda": {d: "Luis Verdugo", c: "nz", g: "G"},
@@ -415,19 +420,14 @@
         }
 
         // LEER PARTIDOS DIRECTAMENTE DESDE LA ENTRADA EN VIVO DE LA FIFA
-        // Esto rompe la dependencia de la lista manual estática
-        // LEER PARTIDOS DIRECTAMENTE DESDE LA ENTRADA EN VIVO DE LA FIFA
-        // LEER PARTIDOS DIRECTAMENTE DESDE LA ENTRADA EN VIVO DE LA FIFA
         Object.keys(resultadosEnVivo).forEach(key => {
             let [t1, t2] = key.split('-');
             
-            // VALIDACIÓN DE SEGURIDAD 1: Si alguno de los dos equipos no está en tu quiniela, ignorar.
             if (!equiposDatos[t1] || !equiposDatos[t2]) return; 
 
             let res = resultadosEnVivo[key];
             let fechaReal = getHorario(t1, t2) || new Date();
             
-            // Asegurar que la fase tenga un valor por defecto
             let faseGrupo = equiposDatos[t1].g || "Eliminatoria";
 
             let objPartido = {
@@ -438,7 +438,9 @@
                 fechaObj: fechaReal,
                 hora: formatearHoraLocal(fechaReal),
                 fecha: formatearFechaLocal(fechaReal),
-                yaPaso: esFechaPasada(fechaReal)
+                yaPaso: esFechaPasada(fechaReal),
+                ciudad: res.ciudad || "Sede por confirmar",// 👈 CAMBIO 2: Transportar la ciudad procesada al objeto interno de renderizado
+                estadio: res.estadio || "Sede por confirmar" // 👈 CAMBIO 2: Transportar la ciudad procesada al objeto interno de renderizado
             };
 
             if (!diasOrdenados[objPartido.fecha]) diasOrdenados[objPartido.fecha] = [];
@@ -452,7 +454,6 @@
                 let g1 = res.g1, g2 = res.g2;
                 let c1 = objPartido.d1, c2 = objPartido.d2;
 
-                // VALIDACIÓN DE SEGURIDAD 2: Verificar que los participantes existan en el acumulador
                 if (estadisticasChangos[c1] && estadisticasChangos[c2]) {
                     estadisticasChangos[c1].pj++; estadisticasChangos[c1].gf += g1; estadisticasChangos[c1].gc += g2;
                     estadisticasChangos[c2].pj++; estadisticasChangos[c2].gf += g2; estadisticasChangos[c2].gc += g1;
@@ -462,7 +463,6 @@
                     else { estadisticasChangos[c1].pe++; estadisticasChangos[c1].pts += 1; estadisticasChangos[c2].pe++; estadisticasChangos[c2].pts += 1; }
                 }
 
-                // VALIDACIÓN DE SEGURIDAD 3: Solo procesar tabla si el grupo existe en gruposStats
                 if (gruposStats[faseGrupo]) {
                     let eq1 = gruposStats[faseGrupo].find(e => e.equipo === t1);
                     let eq2 = gruposStats[faseGrupo].find(e => e.equipo === t2);
@@ -512,7 +512,9 @@
 
                 gridHTML += `
                 <div class="partido-card ${clsAd}" onclick="alternarTarjetaPartido(this)">${badge}
-                    <div class="p-info"><span>⏰ ${pt.hora}</span><span>Fase: ${pt.gr}</span></div>
+                    <div class="p-info">
+                        <span>⏰ ${pt.hora} (${pt.ciudad})</span> <span>Fase: ${pt.gr}</span>
+                    </div>
                     <div class="p-teams">
                         <div class="team"><img src="https://flagcdn.com/w40/${pt.c1}.png" class="img-bandera"><span class="t-nombre">${pt.t1}</span><span class="t-dueño" style="background-color:${coloresParticipantes[pt.d1] || '#555'}">${pt.d1}</span></div>
                         <div style="display:flex;flex-direction:column;align-items:center;">${scoreHtml}${estadoInsignia}</div>
@@ -541,9 +543,6 @@
         });
         contenedorParticipantes.innerHTML = htmlSecciones;
 
-        // Renderizar partidos individuales de cada persona (Filtrando duplicados internos)
-        // Renderizar partidos individuales de cada persona (Filtrando duplicados internos)
-        // Renderizar partidos individuales de cada persona (Corregido: Asignación de etiquetas y colores fijos)
         Object.keys(coloresParticipantes).forEach(persona => {
             const div = document.getElementById('lista-pers-' + persona.replace(/\s+/g, ''));
             if (!div) return;
@@ -565,18 +564,15 @@
                     `<span style="color:#aaa; font-weight:bold;">VS</span>`;
                 let h2hHtml = obtenerHtmlHistorial(pt.t1, pt.t2);
 
-                // --- LÓGICA DIRECTA DE ASIGNACIÓN PARA EL EQUIPO 1 (IZQUIERDA) ---
                 let etiquetaEq1 = (pt.d1 === persona) ? "Tu equipo" : `Rival: ${pt.d1}`;
                 let colorEq1 = coloresParticipantes[pt.d1] || '#555';
 
-                // --- LÓGICA DIRECTA DE ASIGNACIÓN PARA EL EQUIPO 2 (DERECHA) ---
                 let etiquetaEq2 = (pt.d2 === persona) ? "Tu equipo" : `Rival: ${pt.d2}`;
                 let colorEq2 = coloresParticipantes[pt.d2] || '#555';
 
                 html += `
                 <div class="p-mini ${pt.finalizado ? 'partido-pasado' : ''}" onclick="alternarTarjetaPartido(this)">
-                    <div class="p-mini-fecha">${pt.fecha} - ${pt.hora} hrs</div>
-                    <div class="p-mini-equipos">
+                    <div class="p-mini-fecha">${pt.fecha} - ${pt.hora} hrs (${pt.ciudad})</div> <div class="p-mini-equipos">
                         <div class="p-mini-col">
                             <img src="https://flagcdn.com/w20/${pt.c1}.png" style="width:28px; border-radius:3px;">
                             <span style="font-size:0.8rem;">${pt.t1}</span>

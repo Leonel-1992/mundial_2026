@@ -255,8 +255,9 @@
                     const isComplete = ['COMPLETE', 'FINISHED', 'PLAYED'].includes(status);
                     const isLive = ['PLAYING', 'LIVE', 'IN_PROGRESS'].includes(status);
                     
-                    const ciudadSede = m.venueCity || "Sede por confirmar"; // 👈 CAMBIO 1: Extraer la ciudad desde la API de FIFA
-                    const estadioSede = m.venueName || "Sede por confirmar"; // 👈 CAMBIO 2: Extraer la ciudad desde la API de FIFA
+                    // Extraemos tanto la ciudad como el nombre del estadio
+                    const ciudadSede = m.venueCity || "Ciudad por confirmar";
+                    const estadioSede = m.venueName || "Estadio por confirmar";
 
                     const key = `${local}-${visita}`;
                     
@@ -271,8 +272,8 @@
                             status: 'FINISHED',
                             minute: null,
                             isLive: false,
-                            ciudad: ciudadSede, // 👈 CAMBIO 1: Almacenar en el objeto de resultados
-                            estadio: estadioSede // 👈 CAMBIO 1: Almacenar en el objeto de resultados
+                            ciudad: ciudadSede,
+                            estadio: estadioSede
                         };
                     } else if (isLive && m.homeScore !== null && m.awayScore !== null) {
                         resultadosEnVivo[key] = {
@@ -281,11 +282,11 @@
                             status: 'LIVE',
                             minute: m.minutes || 0,
                             isLive: true,
-                            ciudad: ciudadSede, // 👈 CAMBIO 1: Almacenar en el objeto de resultados
-                            estadio: estadioSede // 👈 CAMBIO 1: Almacenar en el objeto de resultados
+                            ciudad: ciudadSede,
+                            estadio: estadioSede
                         };
                     } else {
-                        resultadosEnVivo[key] = { status: 'SCHEDULED', isLive: false, ciudad: ciudadSede, estadio: estadioSede }; // 👈 CAMBIO 1
+                        resultadosEnVivo[key] = { status: 'SCHEDULED', isLive: false, ciudad: ciudadSede, estadio: estadioSede };
                     }
                 }
             }
@@ -305,7 +306,7 @@
         if (resultadosEnVivo[revKey]) {
             const rev = resultadosEnVivo[revKey];
             if (rev.g1 !== undefined && rev.g2 !== undefined) {
-                return { status: rev.status, minute: rev.minute, isLive: rev.isLive, g1: rev.g2, g2: rev.g1, ciudad: rev.ciudad };
+                return { status: rev.status, minute: rev.minute, isLive: rev.isLive, g1: rev.g2, g2: rev.g1, ciudad: rev.ciudad, estadio: rev.estadio };
             }
             return rev;
         }
@@ -439,8 +440,7 @@
                 hora: formatearHoraLocal(fechaReal),
                 fecha: formatearFechaLocal(fechaReal),
                 yaPaso: esFechaPasada(fechaReal),
-                ciudad: res.ciudad || "Sede por confirmar",// 👈 CAMBIO 2: Transportar la ciudad procesada al objeto interno de renderizado
-                estadio: res.estadio || "Sede por confirmar" // 👈 CAMBIO 2: Transportar la ciudad procesada al objeto interno de renderizado
+                sedeCompleta: `${res.estadio || 'Estadio por confirmar'}, ${res.ciudad || 'Ciudad'}` // 👈 Combinamos Estadio y Ciudad
             };
 
             if (!diasOrdenados[objPartido.fecha]) diasOrdenados[objPartido.fecha] = [];
@@ -513,7 +513,7 @@
                 gridHTML += `
                 <div class="partido-card ${clsAd}" onclick="alternarTarjetaPartido(this)">${badge}
                     <div class="p-info">
-                        <span>⏰ ${pt.hora} (${pt.ciudad})</span> <span>Fase: ${pt.gr}</span>
+                        <span>⏰ ${pt.hora} (${pt.sedeCompleta})</span> <span>Fase: ${pt.gr}</span>
                     </div>
                     <div class="p-teams">
                         <div class="team"><img src="https://flagcdn.com/w40/${pt.c1}.png" class="img-bandera"><span class="t-nombre">${pt.t1}</span><span class="t-dueño" style="background-color:${coloresParticipantes[pt.d1] || '#555'}">${pt.d1}</span></div>
@@ -572,7 +572,7 @@
 
                 html += `
                 <div class="p-mini ${pt.finalizado ? 'partido-pasado' : ''}" onclick="alternarTarjetaPartido(this)">
-                    <div class="p-mini-fecha">${pt.fecha} - ${pt.hora} hrs (${pt.ciudad})</div> <div class="p-mini-equipos">
+                    <div class="p-mini-fecha">${pt.fecha} - ${pt.hora} hrs (${pt.sedeCompleta})</div> <div class="p-mini-equipos">
                         <div class="p-mini-col">
                             <img src="https://flagcdn.com/w20/${pt.c1}.png" style="width:28px; border-radius:3px;">
                             <span style="font-size:0.8rem;">${pt.t1}</span>

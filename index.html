@@ -538,9 +538,9 @@
                         <span>⏰ ${pt.hora} (${pt.sedeCompleta})</span> <span>Fase: ${pt.gr}</span>
                     </div>
                     <div class="p-teams">
-                        <div class="team"><img src="https://flagcdn.com/w40/${pt.c1}.png" class="img-bandera"><span class="t-nombre">${pt.t1}</span><span class="t-dueño" style="background-color:${coloresParticipantes[pt.d1] || '#555'}">${pt.d1}</span></div>
+                        <div class="team"><img src="https://flagsapi.com/${(pt.c1 === 'gb-eng' || pt.c1 === 'gb-sct' ? 'GB' : pt.c1).toUpperCase()}/shiny/64.png" class="img-bandera"><span class="t-nombre">${pt.t1}</span><span class="t-dueño" style="background-color:${coloresParticipantes[pt.d1] || '#555'}">${pt.d1}</span></div>
                         <div style="display:flex;flex-direction:column;align-items:center;">${scoreHtml}${estadoInsignia}</div>
-                        <div class="team"><img src="https://flagcdn.com/w40/${pt.c2}.png" class="img-bandera"><span class="t-nombre">${pt.t2}</span><span class="t-dueño" style="background-color:${coloresParticipantes[pt.d2] || '#555'}">${pt.d2}</span></div>
+                        <div class="team"><img src="https://flagsapi.com/${(pt.c2 === 'gb-eng' || pt.c2 === 'gb-sct' ? 'GB' : pt.c2).toUpperCase()}/shiny/64.png" class="img-bandera"><span class="t-nombre">${pt.t2}</span><span class="t-dueño" style="background-color:${coloresParticipantes[pt.d2] || '#555'}">${pt.d2}</span></div>
                     </div>
                     ${h2hHtml}
                 </div>`;
@@ -595,13 +595,13 @@
                 <div class="p-mini ${pt.finalizado ? 'partido-pasado' : ''}" onclick="alternarTarjetaPartido(this)">
                     <div class="p-mini-fecha">${pt.fecha} - ${pt.hora} hrs (${pt.sedeCompleta})</div> <div class="p-mini-equipos">
                         <div class="p-mini-col">
-                            <img src="https://flagcdn.com/w20/${pt.c1}.png" style="width:28px; border-radius:3px;">
+                            <img src="https://flagsapi.com/${(pt.c1 === 'gb-eng' || pt.c1 === 'gb-sct' ? 'GB' : pt.c1).toUpperCase()}/shiny/64.png" style="width:36px; height:24px; object-fit:cover; border-radius:3px;">
                             <span style="font-size:0.8rem;">${pt.t1}</span>
                             <span class="t-dueño" style="font-size:0.65rem; background-color:${colorEq1}">${etiquetaEq1}</span>
                         </div>
                         <div style="display:flex; flex-direction:column; align-items:center;">${scoreCenter}${estado}</div>
                         <div class="p-mini-col">
-                            <img src="https://flagcdn.com/w20/${pt.c2}.png" style="width:28px; border-radius:3px;">
+                            <img src="https://flagsapi.com/${(pt.c2 === 'gb-eng' || pt.c2 === 'gb-sct' ? 'GB' : pt.c2).toUpperCase()}/shiny/64.png" style="width:36px; height:24px; object-fit:cover; border-radius:3px;">
                             <span style="font-size:0.8rem;">${pt.t2}</span>
                             <span class="t-dueño" style="font-size:0.65rem; background-color:${colorEq2}">${etiquetaEq2}</span>
                         </div>
@@ -624,7 +624,7 @@
             htmlGrupos += `<div class="seccion-contenedor"><h3 class="seccion-titulo">🎯 Grupo ${g}</h3><div style="overflow-x:auto;"><table class="tabla-stats"><thead><tr><th style="text-align:left;">Equipo</th><th>PJ</th><th>G</th><th>E</th><th>P</th><th>GF</th><th>DG</th><th>Pts</th></tr></thead><tbody>`;
             gruposStats[g].forEach((eq, i) => {
                 let dg = eq.gf - eq.gc;
-                htmlGrupos += `<tr><td class="td-izq"><span style="color:#aaa;">${i+1}</span><img src="https://flagcdn.com/w20/${eq.bandera}.png" style="width:20px;"><div>${eq.equipo}<span class="t-dueño" style="font-size:0.6rem; margin-left:6px; background-color:${coloresParticipantes[eq.dueño] || '#555'}">${eq.dueño}</span></div></td><td>${eq.pj}</td><td>${eq.pg}</td><td>${eq.pe}</td><td>${eq.pp}</td><td>${eq.gf}</td><td>${dg>0?'+':''}${dg}</td><td style="font-weight:900;">${eq.pts}</td></tr>`;
+                htmlGrupos += `<tr><td class="td-izq"><span style="color:#aaa;">${i+1}</span><img src="https://flagsapi.com/${(eq.bandera === 'gb-eng' || eq.bandera === 'gb-sct' ? 'GB' : eq.bandera).toUpperCase()}/shiny/64.png" style="width:20px;"><div>${eq.equipo}<span class="t-dueño" style="font-size:0.6rem; margin-left:6px; background-color:${coloresParticipantes[eq.dueño] || '#555'}">${eq.dueño}</span></div></td><td>${eq.pj}</td><td>${eq.pg}</td><td>${eq.pe}</td><td>${eq.pp}</td><td>${eq.gf}</td><td>${dg>0?'+':''}${dg}</td><td style="font-weight:900;">${eq.pts}</td></tr>`;
             });
             htmlGrupos += `</tbody></table></div></div>`;
         }
